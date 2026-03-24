@@ -47,6 +47,25 @@ func LogicalVolumes(vgName string) ([]string, error) {
 	return nonEmptyLines(output), nil
 }
 
+func LogicalVolumesForMount(vgNames []string) ([]string, error) {
+	var result []string
+	seen := map[string]struct{}{}
+	for _, vgName := range vgNames {
+		lvs, err := LogicalVolumes(vgName)
+		if err != nil {
+			return nil, err
+		}
+		for _, lv := range lvs {
+			if _, ok := seen[lv]; ok {
+				continue
+			}
+			seen[lv] = struct{}{}
+			result = append(result, lv)
+		}
+	}
+	return result, nil
+}
+
 func Deactivate(vgNames []string) error {
 	for _, vg := range vgNames {
 		if _, err := runtime.RunCombined("vgchange", "-an", vg); err != nil {

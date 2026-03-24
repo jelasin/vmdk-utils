@@ -12,12 +12,21 @@ import (
 )
 
 func FindFreeDevice() (string, error) {
-	matches, err := filepath.Glob("/sys/class/block/nbd*")
+	matches, err := listDevices()
 	if err != nil {
-		return "", fmt.Errorf("glob nbd devices: %w", err)
+		return "", err
 	}
 	if len(matches) == 0 {
-		return "", fmt.Errorf("no /dev/nbdX devices found; load nbd module first")
+		if err := loadModule(); err != nil {
+			return "", err
+		}
+		matches, err = listDevices()
+		if err != nil {
+			return "", err
+		}
+		if len(matches) == 0 {
+			return "", fmt.Errorf("no /dev/nbdX devices found after loading nbd module")
+		}
 	}
 
 	for _, match := range matches {
@@ -35,6 +44,21 @@ func FindFreeDevice() (string, error) {
 	return "", fmt.Errorf("no free nbd devices available")
 }
 
+func listDevices() ([]string, error) {
+	matches, err := filepath.Glob("/sys/class/block/nbd*")
+	if err != nil {
+		return nil, fmt.Errorf("glob nbd devices: %w", err)
+	}
+	return matches, nil
+}
+
+func loadModule() error {
+	if _, err := runtime.RunCombined("modprobe", "nbd", "max_part=16"); err != nil {
+		return fmt.Errorf("load nbd module: %w", err)
+	}
+	return nil
+}
+
 func Attach(image, device string, readOnly bool) error {
 	args := []string{"--connect", device}
 	if readOnly {
@@ -47,6 +71,33 @@ func Attach(image, device string, readOnly bool) error {
 	if _, err := runtime.RunCombined("partprobe", device); err != nil {
 		return fmt.Errorf("partprobe %s: %w", device, err)
 	}
+	_ = waitForPartitionScan(device)
+	return nil
+}
+
+func waitForPartitionScan(device string) error {
+	deadline := time.Now().Add(10 * time.Second)
+	lastSnapshot := ""
+	stableCount := 0
+
+	for time.Now().Before(deadline) {
+		matches, err := filepath.Glob(device + "p*")
+		if err != nil {
+			return fmt.Errorf("glob partitions for %s: %w", device, err)
+		}
+		snapshot := strings.Join(matches, "\n")
+		if snapshot != "" && snapshot == lastSnapshot {
+			stableCount++
+			if stableCount >= 2 {
+				return nil
+			}
+		} else {
+			stableCount = 0
+			lastSnapshot = snapshot
+		}
+		time.Sleep(250 * time.Millisecond)
+	}
+
 	return nil
 }
 

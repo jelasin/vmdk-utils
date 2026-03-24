@@ -29,6 +29,13 @@ func RunUmount(out, errOut io.Writer, args []string) error {
 	if err != nil {
 		return err
 	}
+	if ok, err := tryUmountMountAll(mountpoint, store); ok {
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(out, "Unmounted all mounts under %s\n", mountpoint)
+		return err
+	}
 	session, ok := store.FindByMountpoint(mountpoint)
 	if !ok {
 		return fmt.Errorf("no tracked session for mountpoint %s", mountpoint)

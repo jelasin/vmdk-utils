@@ -12,7 +12,7 @@
 - `detach`
 - `status`
 - 本地状态存储
-- `runtime/bin` 优先查找策略
+- 系统 `PATH` 依赖解析
 
 ## 下一阶段
 
@@ -47,4 +47,4 @@
 - 自动分区探测
 - LVM 激活/回收
 - stale session cleanup
-- runtime 打包脚本
+- `detect-deps` 依赖检测

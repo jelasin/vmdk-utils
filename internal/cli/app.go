@@ -37,6 +37,8 @@ func (a *App) Run(args []string) error {
 		return commands.RunAttach(a.out, a.err, rest)
 	case "mount":
 		return commands.RunMount(a.out, a.err, rest)
+	case "mount-all":
+		return commands.RunMountAll(a.out, a.err, rest)
 	case "umount":
 		return commands.RunUmount(a.out, a.err, rest)
 	case "pull":
@@ -51,6 +53,8 @@ func (a *App) Run(args []string) error {
 		return commands.RunDetach(a.out, a.err, rest)
 	case "status":
 		return commands.RunStatus(a.out, a.err, rest)
+	case "detect-deps":
+		return commands.RunDetectDeps(a.out, a.err, rest)
 	default:
 		if strings.HasPrefix(cmd, "-") {
 			return errors.New("unknown global option: " + cmd)
@@ -69,6 +73,7 @@ func (a *App) printHelp() {
 	fmt.Fprintln(a.out, "  inspect <image>          Show VMDK metadata via qemu-img")
 	fmt.Fprintln(a.out, "  attach <image>           Attach image to a free /dev/nbdX")
 	fmt.Fprintln(a.out, "  mount <image> <dir>      Attach and mount an image partition")
+	fmt.Fprintln(a.out, "  mount-all <image> <dir>  Attach and mount all mountable partitions")
 	fmt.Fprintln(a.out, "  umount <dir>             Unmount and detach tracked session")
 	fmt.Fprintln(a.out, "  pull <image> ...         Copy files out of a guest partition")
 	fmt.Fprintln(a.out, "  push <image> ...         Copy files into a guest partition")
@@ -76,6 +81,6 @@ func (a *App) printHelp() {
 	fmt.Fprintln(a.out, "  cleanup                  Remove stale tracked sessions")
 	fmt.Fprintln(a.out, "  detach <image|device>    Detach an active /dev/nbdX session")
 	fmt.Fprintln(a.out, "  status                   Show tracked sessions")
+	fmt.Fprintln(a.out, "  detect-deps              Check required system dependencies")
 	fmt.Fprintln(a.out)
-	fmt.Fprintln(a.out, "Planned commands: richer inspect output")
 }

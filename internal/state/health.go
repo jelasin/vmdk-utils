@@ -77,6 +77,15 @@ func isMounted(path string) bool {
 	return strings.Contains(output, needle)
 }
 
+func hasMountedChildren(path string) bool {
+	output, err := runtime.RunCombined("mount")
+	if err != nil {
+		return false
+	}
+	needle := " on " + path + "/"
+	return strings.Contains(output, needle)
+}
+
 func evaluateStale(session Session, h Health) (bool, string) {
 	if !h.ImageExists {
 		return true, "image missing"
@@ -90,6 +99,14 @@ func evaluateStale(session Session, h Health) (bool, string) {
 		}
 		if !h.MountpointMounted {
 			return true, "mountpoint not mounted"
+		}
+	}
+	if session.Status == "mounted-all" {
+		if session.Mountpoint == "" || !h.MountpointExists {
+			return true, "mount root missing"
+		}
+		if !hasMountedChildren(session.Mountpoint) {
+			return true, "mount root has no mounted children"
 		}
 	}
 	if session.PartitionDevice != "" && !h.PartitionDeviceExists {

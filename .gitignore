@@ -1,0 +1,10 @@
+vmdkctl
+
+# Go build/test artifacts
+*.out
+*.test
+
+# Local editor/OS files
+.DS_Store
+.idea/
+.vscode/
