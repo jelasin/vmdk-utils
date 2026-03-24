@@ -33,7 +33,7 @@
 - 临时挂载工作流
 
 ### M4
-- `repack`
+- `convert`
 - 导出 profile
 
 ### M5
@@ -42,7 +42,7 @@
 - 基础集成测试
 
 ### 已完成
-- `repack`
+- `convert`
 - VMDK 导出 profile: workstation / esxi / stream-optimized
 - 自动分区探测
 - LVM 激活/回收

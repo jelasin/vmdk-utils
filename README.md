@@ -17,14 +17,11 @@ WSL2/Linux 下的 VMDK 查看、挂载、修改与重打包工具。
 - `vmdkctl umount <mountpoint>`
 - `vmdkctl pull <image> <guest-path> <local-path>`
 - `vmdkctl push <image> <local-path> <guest-path>`
-- `vmdkctl repack <src-image> <dst.vmdk>`
+- `vmdkctl convert <src-image> <dst.vmdk>`
 - `vmdkctl cleanup`
 - `vmdkctl detach <image|device>`
 - `vmdkctl status`
 - `vmdkctl detect-deps`
-
-## 计划中的命令
-
 
 ## 运行前提
 
@@ -46,6 +43,12 @@ WSL2/Linux 下的 VMDK 查看、挂载、修改与重打包工具。
 
 ```bash
 go run ./cmd/vmdkctl detect-deps
+```
+
+## 构建
+
+```bash
+go build ./cmd/vmdkctl
 ```
 
 ## 依赖安装
@@ -101,7 +104,7 @@ go run ./cmd/vmdkctl mount-all disk.vmdk /mnt/vmdk-all
 go run ./cmd/vmdkctl mount --partition 1 disk.vmdk /mnt/vmdk
 go run ./cmd/vmdkctl pull disk.vmdk /etc/fstab ./fstab
 go run ./cmd/vmdkctl push disk.vmdk ./hosts /etc/hosts
-go run ./cmd/vmdkctl repack --profile workstation disk.qcow2 disk.vmdk
+go run ./cmd/vmdkctl convert --profile workstation disk.qcow2 disk.vmdk
 go run ./cmd/vmdkctl status
 go run ./cmd/vmdkctl detect-deps
 go run ./cmd/vmdkctl cleanup
@@ -116,9 +119,3 @@ go run ./cmd/vmdkctl detach /dev/nbd0
 ```text
 ~/.local/state/vmdkctl/sessions.json
 ```
-
-## 下一步
-
-1. 丰富 `inspect` 结构化输出
-2. 增加集成测试样本
-3. 增加更多自动化测试

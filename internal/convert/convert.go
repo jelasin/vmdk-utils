@@ -1,4 +1,4 @@
-package repack
+package convert
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ type Options struct {
 	InputFormat string
 }
 
-func ConvertToVMDK(src, dst string, opts Options) error {
+func ToVMDK(src, dst string, opts Options) error {
 	profileOptions, err := profileArgs(opts.Profile)
 	if err != nil {
 		return err
@@ -42,6 +42,6 @@ func profileArgs(profile string) (string, error) {
 	case "stream-optimized":
 		return "subformat=streamOptimized", nil
 	default:
-		return "", fmt.Errorf("unsupported repack profile %q", profile)
+		return "", fmt.Errorf("unsupported convert profile %q", profile)
 	}
 }

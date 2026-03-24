@@ -8,11 +8,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/jelasin/vmdk-utils/internal/repack"
+	convertpkg "github.com/jelasin/vmdk-utils/internal/convert"
 )
 
-func RunRepack(out, errOut io.Writer, args []string) error {
-	fs := flag.NewFlagSet("repack", flag.ContinueOnError)
+func RunConvert(out, errOut io.Writer, args []string) error {
+	fs := flag.NewFlagSet("convert", flag.ContinueOnError)
 	fs.SetOutput(errOut)
 	profile := fs.String("profile", "workstation", "export profile: workstation|esxi|stream-optimized")
 	inputFormat := fs.String("input-format", "", "optional source image format")
@@ -21,7 +21,7 @@ func RunRepack(out, errOut io.Writer, args []string) error {
 	}
 
 	if fs.NArg() != 2 {
-		return errors.New("usage: vmdkctl repack [--profile workstation|esxi|stream-optimized] [--input-format fmt] <src-image> <dst.vmdk>")
+		return errors.New("usage: vmdkctl convert [--profile workstation|esxi|stream-optimized] [--input-format fmt] <src-image> <dst.vmdk>")
 	}
 
 	src, _ := filepath.Abs(fs.Arg(0))
@@ -36,13 +36,13 @@ func RunRepack(out, errOut io.Writer, args []string) error {
 		return fmt.Errorf("create destination dir: %w", err)
 	}
 
-	if err := repack.ConvertToVMDK(src, dst, repack.Options{
+	if err := convertpkg.ToVMDK(src, dst, convertpkg.Options{
 		Profile:     *profile,
 		InputFormat: *inputFormat,
 	}); err != nil {
 		return err
 	}
 
-	_, err := fmt.Fprintf(out, "Repacked %s -> %s (profile=%s)\n", src, dst, *profile)
+	_, err := fmt.Fprintf(out, "Converted %s -> %s (profile=%s)\n", src, dst, *profile)
 	return err
 }
