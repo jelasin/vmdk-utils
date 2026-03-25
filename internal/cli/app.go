@@ -176,15 +176,17 @@ Notes:
 
 `,
 		"convert": `Usage:
-  vmdkctl convert [--profile workstation|esxi|stream-optimized] [--input-format fmt] <src-image> <dst.vmdk>
+	  vmdkctl convert --to <format> [--from <format>] [--profile workstation|esxi|stream-optimized] <src-image> <dst-image>
 
 Options:
-  --profile       Output VMDK profile; default is workstation
-  --input-format  Optional source format passed to qemu-img
+	  --to            Destination format passed to qemu-img (required)
+	  --from          Optional source format passed to qemu-img
+	  --profile       Output VMDK profile; only valid when --to vmdk
 
 Notes:
-  - Converts or exports an image into a new VMDK file
-  - Does not modify the source image in place
+	  - Converts an image into a new file in any qemu-img supported format
+	  - VMDK-specific profiles are available when writing --to vmdk
+	  - Does not modify the source image in place
 
 `,
 		"cleanup": `Usage:

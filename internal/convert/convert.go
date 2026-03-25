@@ -7,33 +7,44 @@ import (
 )
 
 type Options struct {
-	Profile     string
-	InputFormat string
+	FromFormat string
+	ToFormat   string
+	Profile    string
 }
 
-func ToVMDK(src, dst string, opts Options) error {
-	profileOptions, err := profileArgs(opts.Profile)
+func Convert(src, dst string, opts Options) error {
+	args := []string{"convert", "-p"}
+	if opts.FromFormat != "" {
+		args = append(args, "-f", opts.FromFormat)
+	}
+	if opts.ToFormat == "" {
+		return fmt.Errorf("destination format is required")
+	}
+	args = append(args, "-O", opts.ToFormat)
+
+	profileOptions, err := profileArgs(opts.ToFormat, opts.Profile)
 	if err != nil {
 		return err
 	}
-
-	args := []string{"convert", "-p"}
-	if opts.InputFormat != "" {
-		args = append(args, "-f", opts.InputFormat)
-	}
-	args = append(args, "-O", "vmdk")
 	if profileOptions != "" {
 		args = append(args, "-o", profileOptions)
 	}
 	args = append(args, src, dst)
 
 	if _, err := runtime.RunCombined("qemu-img", args...); err != nil {
-		return fmt.Errorf("qemu-img convert to vmdk: %w", err)
+		return fmt.Errorf("qemu-img convert to %s: %w", opts.ToFormat, err)
 	}
 	return nil
 }
 
-func profileArgs(profile string) (string, error) {
+func profileArgs(toFormat, profile string) (string, error) {
+	if toFormat != "vmdk" {
+		if profile == "" || profile == "workstation" {
+			return "", nil
+		}
+		return "", fmt.Errorf("unsupported convert profile %q for output format %q", profile, toFormat)
+	}
+
 	switch profile {
 	case "", "workstation":
 		return "adapter_type=lsilogic,subformat=monolithicSparse", nil

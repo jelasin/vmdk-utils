@@ -104,7 +104,8 @@ go run ./cmd/vmdkctl mount-all disk.vmdk /mnt/vmdk-all
 go run ./cmd/vmdkctl mount --partition 1 disk.vmdk /mnt/vmdk
 go run ./cmd/vmdkctl pull disk.vmdk /etc/fstab ./fstab
 go run ./cmd/vmdkctl push disk.vmdk ./hosts /etc/hosts
-go run ./cmd/vmdkctl convert --profile workstation disk.qcow2 disk.vmdk
+go run ./cmd/vmdkctl convert --to vmdk --profile workstation disk.qcow2 disk.vmdk
+go run ./cmd/vmdkctl convert --from vmdk --to qcow2 disk.vmdk disk.qcow2
 go run ./cmd/vmdkctl status
 go run ./cmd/vmdkctl detect-deps
 go run ./cmd/vmdkctl cleanup
