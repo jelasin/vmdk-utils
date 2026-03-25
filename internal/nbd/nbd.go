@@ -49,7 +49,30 @@ func listDevices() ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("glob nbd devices: %w", err)
 	}
-	return matches, nil
+	devices := make([]string, 0, len(matches))
+	for _, match := range matches {
+		name := filepath.Base(match)
+		if !isWholeDevice(name) {
+			continue
+		}
+		devices = append(devices, match)
+	}
+	return devices, nil
+}
+
+func isWholeDevice(name string) bool {
+	if !strings.HasPrefix(name, "nbd") {
+		return false
+	}
+	if len(name) == len("nbd") {
+		return false
+	}
+	for _, r := range name[len("nbd"):] {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func loadModule() error {
