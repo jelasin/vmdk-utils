@@ -90,6 +90,7 @@ func MountTargets(device string) ([]MountTarget, error) {
 	}
 	result := make([]MountTarget, 0, len(partitions))
 	seen := map[string]struct{}{}
+	skipped := []string{}
 	for _, part := range partitions {
 		partNum := extractPartitionNumber(device, part.Path)
 		if partNum == 0 {
@@ -98,15 +99,21 @@ func MountTargets(device string) ([]MountTarget, error) {
 		if lvm.IsPhysicalVolume(part.Path) {
 			vgNames, err := lvm.ActivateForPV(part.Path)
 			if err != nil {
+				skipped = append(skipped, fmt.Sprintf("%s (LVM activate failed: %v)", part.Path, err))
 				continue
 			}
 			lvs, err := lvm.LogicalVolumesForMount(vgNames)
 			if err != nil {
 				_ = lvm.Deactivate(vgNames)
+				skipped = append(skipped, fmt.Sprintf("%s (LVM volumes failed: %v)", part.Path, err))
 				continue
 			}
 			for _, lv := range lvs {
-				if _, ok := seen[lv]; ok || !isMountableFilesystem(lv) {
+				if _, ok := seen[lv]; ok {
+					continue
+				}
+				if !isMountableFilesystem(lv) {
+					skipped = append(skipped, fmt.Sprintf("%s (not mountable)", lv))
 					continue
 				}
 				seen[lv] = struct{}{}
@@ -114,11 +121,18 @@ func MountTargets(device string) ([]MountTarget, error) {
 			}
 			continue
 		}
-		if _, ok := seen[part.Path]; ok || !isMountableFilesystem(part.Path) {
+		if _, ok := seen[part.Path]; ok {
+			continue
+		}
+		if !isMountableFilesystem(part.Path) {
+			skipped = append(skipped, fmt.Sprintf("%s (not mountable)", part.Path))
 			continue
 		}
 		seen[part.Path] = struct{}{}
 		result = append(result, MountTarget{Device: part.Path, Partition: partNum, Source: part.Path})
+	}
+	if len(result) == 0 && len(skipped) > 0 {
+		return nil, fmt.Errorf("no mountable partitions found; skipped: %s", strings.Join(skipped, ", "))
 	}
 	return result, nil
 }

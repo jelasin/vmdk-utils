@@ -89,7 +89,7 @@ func RunMountAll(out, errOut io.Writer, args []string) error {
 			_ = store.RemoveByDevice(session.Device)
 		}
 		if err != nil {
-			return err
+			return fmt.Errorf("no mountable partitions found: %w", err)
 		}
 		return fmt.Errorf("no mountable partitions found")
 	}

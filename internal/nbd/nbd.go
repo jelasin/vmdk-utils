@@ -33,10 +33,30 @@ func FindFreeDevice() (string, error) {
 		name := filepath.Base(match)
 		pidPath := filepath.Join(match, "pid")
 		if _, err := os.Stat(pidPath); os.IsNotExist(err) {
+			// Check if device has a valid size (not disconnected)
+			sizePath := filepath.Join(match, "size")
+			sizeBytes, err := os.ReadFile(sizePath)
+			if err == nil {
+				size := strings.TrimSpace(string(sizeBytes))
+				if size != "0" {
+					// Device is in a bad state (has size but no pid), skip it
+					continue
+				}
+			}
 			return "/dev/" + name, nil
 		}
 		content, err := os.ReadFile(pidPath)
 		if err == nil && strings.TrimSpace(string(content)) == "" {
+			// Check if device has a valid size (not disconnected)
+			sizePath := filepath.Join(match, "size")
+			sizeBytes, err := os.ReadFile(sizePath)
+			if err == nil {
+				size := strings.TrimSpace(string(sizeBytes))
+				if size != "0" {
+					// Device is in a bad state (has size but empty pid), skip it
+					continue
+				}
+			}
 			return "/dev/" + name, nil
 		}
 	}

@@ -17,9 +17,45 @@ func Mount(device, mountpoint string, readOnly bool) error {
 	}
 	args = append(args, device, mountpoint)
 	if _, err := runtime.RunCombined("mount", args...); err != nil {
+		if readOnly {
+			if retryArgs, ok := recoverySafeMountArgs(device, mountpoint); ok {
+				if _, retryErr := runtime.RunCombined("mount", retryArgs...); retryErr == nil {
+					return nil
+				}
+			}
+		}
 		return fmt.Errorf("mount %s to %s: %w", device, mountpoint, err)
 	}
 	return nil
+}
+
+func recoverySafeMountArgs(device, mountpoint string) ([]string, bool) {
+	fstype, err := filesystemType(device)
+	if err != nil {
+		return nil, false
+	}
+	switch fstype {
+	case "ext3", "ext4":
+		return []string{"-t", fstype, "-o", "ro,noload", device, mountpoint}, true
+	case "xfs":
+		return []string{"-t", fstype, "-o", "ro,norecovery", device, mountpoint}, true
+	default:
+		return nil, false
+	}
+}
+
+func filesystemType(device string) (string, error) {
+	output, err := runtime.RunCombined("lsblk", "-n", "-o", "FSTYPE", device)
+	if err != nil {
+		return "", err
+	}
+	for _, line := range strings.Split(output, "\n") {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			return line, nil
+		}
+	}
+	return "", fmt.Errorf("filesystem type unavailable for %s", device)
 }
 
 func Umount(mountpoint string) error {
