@@ -19,7 +19,7 @@ import (
 	"github.com/jelasin/vmdk-utils/internal/state"
 )
 
-func RunInspect(out, errOut io.Writer, args []string) error {
+func RunInspect(out, errOut io.Writer, args []string) (runErr error) {
 	fs := flag.NewFlagSet("inspect", flag.ContinueOnError)
 	fs.SetOutput(errOut)
 	jsonOutput := fs.Bool("json", false, "emit machine-readable JSON")
@@ -61,8 +61,12 @@ func RunInspect(out, errOut io.Writer, args []string) error {
 	}
 	defer func() {
 		if attachedNow {
-			_ = nbd.Detach(session.Device)
-			_ = store.RemoveByDevice(session.Device)
+			if err := nbd.Detach(session.Device); err != nil && runErr == nil {
+				runErr = err
+			}
+			if err := store.RemoveByDevice(session.Device); err != nil && runErr == nil {
+				runErr = err
+			}
 		}
 	}()
 

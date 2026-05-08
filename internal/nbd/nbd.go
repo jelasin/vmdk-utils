@@ -31,32 +31,11 @@ func FindFreeDevice() (string, error) {
 
 	for _, match := range matches {
 		name := filepath.Base(match)
-		pidPath := filepath.Join(match, "pid")
-		if _, err := os.Stat(pidPath); os.IsNotExist(err) {
-			// Check if device has a valid size (not disconnected)
-			sizePath := filepath.Join(match, "size")
-			sizeBytes, err := os.ReadFile(sizePath)
-			if err == nil {
-				size := strings.TrimSpace(string(sizeBytes))
-				if size != "0" {
-					// Device is in a bad state (has size but no pid), skip it
-					continue
-				}
-			}
-			return "/dev/" + name, nil
+		ready, _, err := readyToAttach("/dev/" + name)
+		if err != nil {
+			continue
 		}
-		content, err := os.ReadFile(pidPath)
-		if err == nil && strings.TrimSpace(string(content)) == "" {
-			// Check if device has a valid size (not disconnected)
-			sizePath := filepath.Join(match, "size")
-			sizeBytes, err := os.ReadFile(sizePath)
-			if err == nil {
-				size := strings.TrimSpace(string(sizeBytes))
-				if size != "0" {
-					// Device is in a bad state (has size but empty pid), skip it
-					continue
-				}
-			}
+		if ready {
 			return "/dev/" + name, nil
 		}
 	}
@@ -103,6 +82,9 @@ func loadModule() error {
 }
 
 func Attach(image, device string, readOnly bool) error {
+	if err := WaitForReadyToAttach(device); err != nil {
+		return err
+	}
 	args := []string{"--connect", device}
 	if readOnly {
 		args = append(args, "--read-only")
@@ -148,7 +130,68 @@ func Detach(device string) error {
 	if _, err := runtime.RunCombined("qemu-nbd", "--disconnect", device); err != nil {
 		return fmt.Errorf("qemu-nbd detach: %w", err)
 	}
+	if err := WaitForReadyToAttach(device); err != nil {
+		return fmt.Errorf("wait for nbd detach: %w", err)
+	}
 	return nil
+}
+
+func HasActiveBackend(device string) bool {
+	pid, err := os.ReadFile(filepath.Join("/sys/class/block", filepath.Base(device), "pid"))
+	return err == nil && strings.TrimSpace(string(pid)) != ""
+}
+
+func WaitForReadyToAttach(device string) error {
+	deadline := time.Now().Add(10 * time.Second)
+	lastReason := "not ready"
+	for time.Now().Before(deadline) {
+		ready, reason, err := readyToAttach(device)
+		if err != nil {
+			return err
+		}
+		if ready {
+			return nil
+		}
+		if reason != "" {
+			lastReason = reason
+		}
+		time.Sleep(250 * time.Millisecond)
+	}
+	return fmt.Errorf("%s is not ready for attach: %s", device, lastReason)
+}
+
+func readyToAttach(device string) (bool, string, error) {
+	name := filepath.Base(device)
+	sysPath := filepath.Join("/sys/class/block", name)
+	if _, err := os.Stat(sysPath); err != nil {
+		return false, "", fmt.Errorf("stat %s: %w", sysPath, err)
+	}
+
+	pid, err := os.ReadFile(filepath.Join(sysPath, "pid"))
+	if err == nil && strings.TrimSpace(string(pid)) != "" {
+		return false, "qemu-nbd backend is still active", nil
+	}
+	if err != nil && !os.IsNotExist(err) {
+		return false, "", fmt.Errorf("read nbd pid for %s: %w", device, err)
+	}
+
+	size, err := os.ReadFile(filepath.Join(sysPath, "size"))
+	if err != nil {
+		return false, "", fmt.Errorf("read nbd size for %s: %w", device, err)
+	}
+	if strings.TrimSpace(string(size)) != "0" {
+		return false, "device still reports non-zero size", nil
+	}
+
+	partitions, err := filepath.Glob(device + "p*")
+	if err != nil {
+		return false, "", fmt.Errorf("glob partitions for %s: %w", device, err)
+	}
+	if len(partitions) > 0 {
+		return false, "partition devices are still present", nil
+	}
+
+	return true, "", nil
 }
 
 func WaitForPartition(device string, partition int) (string, error) {

@@ -7,7 +7,12 @@ import (
 
 func ensureSession(store *state.Store, image, requestedDevice string, readOnly bool) (state.Session, bool, error) {
 	if session, ok := store.FindByImage(image); ok {
-		return session, false, nil
+		if nbd.HasActiveBackend(session.Device) {
+			return session, false, nil
+		}
+		if err := store.RemoveByDevice(session.Device); err != nil {
+			return state.Session{}, false, err
+		}
 	}
 
 	device := requestedDevice

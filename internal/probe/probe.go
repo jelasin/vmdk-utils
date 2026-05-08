@@ -112,7 +112,7 @@ func MountTargets(device string) ([]MountTarget, error) {
 				if _, ok := seen[lv]; ok {
 					continue
 				}
-				if !isMountableFilesystem(lv) {
+				if !hasMountableFilesystem(lv, "") {
 					skipped = append(skipped, fmt.Sprintf("%s (not mountable)", lv))
 					continue
 				}
@@ -124,7 +124,7 @@ func MountTargets(device string) ([]MountTarget, error) {
 		if _, ok := seen[part.Path]; ok {
 			continue
 		}
-		if !isMountableFilesystem(part.Path) {
+		if !hasMountableFilesystem(part.Path, part.FSType) {
 			skipped = append(skipped, fmt.Sprintf("%s (not mountable)", part.Path))
 			continue
 		}
@@ -244,17 +244,37 @@ func logicalVolumeCandidates(vgNames []string, partition int, source string) ([]
 	return result, nil
 }
 
-func isMountableFilesystem(device string) bool {
-	tmpMount, err := os.MkdirTemp("", "vmdkctl-check-")
-	if err != nil {
+func hasMountableFilesystem(device, knownType string) bool {
+	fstype := strings.TrimSpace(knownType)
+	if fstype == "" {
+		fstype = filesystemType(device)
+	}
+	switch fstype {
+	case "ext2", "ext3", "ext4", "xfs", "btrfs", "vfat", "ntfs", "iso9660":
+		return true
+	default:
 		return false
 	}
-	defer os.Remove(tmpMount)
-	if err := mount.Mount(device, tmpMount, true); err != nil {
-		return false
+}
+
+func filesystemType(device string) string {
+	if output, err := runtime.RunCombined("blkid", "-o", "value", "-s", "TYPE", device); err == nil {
+		for _, line := range strings.Split(output, "\n") {
+			line = strings.TrimSpace(line)
+			if line != "" {
+				return line
+			}
+		}
 	}
-	defer func() { _ = mount.Umount(tmpMount) }()
-	return true
+	if output, err := runtime.RunCombined("lsblk", "-n", "-o", "FSTYPE", device); err == nil {
+		for _, line := range strings.Split(output, "\n") {
+			line = strings.TrimSpace(line)
+			if line != "" {
+				return line
+			}
+		}
+	}
+	return ""
 }
 
 func scoreFilesystem(device string) int {

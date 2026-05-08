@@ -45,6 +45,14 @@ func recoverySafeMountArgs(device, mountpoint string) ([]string, bool) {
 }
 
 func filesystemType(device string) (string, error) {
+	if output, err := runtime.RunCombined("blkid", "-o", "value", "-s", "TYPE", device); err == nil {
+		for _, line := range strings.Split(output, "\n") {
+			line = strings.TrimSpace(line)
+			if line != "" {
+				return line, nil
+			}
+		}
+	}
 	output, err := runtime.RunCombined("lsblk", "-n", "-o", "FSTYPE", device)
 	if err != nil {
 		return "", err

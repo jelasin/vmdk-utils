@@ -48,6 +48,8 @@ func (a *App) Run(args []string) error {
 		return commands.RunPush(a.out, a.err, rest)
 	case "convert":
 		return commands.RunConvert(a.out, a.err, rest)
+	case "repack":
+		return commands.RunRepack(a.out, a.err, rest)
 	case "cleanup":
 		return commands.RunCleanup(a.out, a.err, rest)
 	case "detach":
@@ -88,7 +90,7 @@ func (a *App) printHelp(args []string) {
 }
 
 func commandOrder() []string {
-	return []string{"inspect", "attach", "mount", "mount-all", "umount", "pull", "push", "convert", "cleanup", "detach", "status", "detect-deps"}
+	return []string{"inspect", "attach", "mount", "mount-all", "umount", "pull", "push", "convert", "repack", "cleanup", "detach", "status", "detect-deps"}
 }
 
 func commandSummaries() map[string]string {
@@ -101,6 +103,7 @@ func commandSummaries() map[string]string {
 		"pull":        "Copy files out of a guest filesystem",
 		"push":        "Copy files into a guest filesystem",
 		"convert":     "Convert/export an image to VMDK",
+		"repack":      "Rewrite a modified image as a validated VMDK",
 		"cleanup":     "Remove stale tracked sessions",
 		"detach":      "Disconnect an active /dev/nbdX session",
 		"status":      "Show tracked sessions and health",
@@ -187,6 +190,20 @@ Notes:
 	  - Converts an image into a new file in any qemu-img supported format
 	  - VMDK-specific profiles are available when writing --to vmdk
 	  - Does not modify the source image in place
+
+`,
+		"repack": `Usage:
+  vmdkctl repack [--from <format>] [--profile workstation|esxi|stream-optimized] [--force] <src-image> <dst.vmdk>
+
+Options:
+  --from       Optional source format passed to qemu-img
+  --profile    Output VMDK profile (default: workstation)
+  --force      Replace destination if it already exists
+
+Notes:
+  - Use after modifying and unmounting a working image
+  - Writes a temporary VMDK, attaches it read-only, verifies mountable filesystems, then installs the destination
+  - Does not rebuild a disk from mounted directories; it preserves the source image's block-level disk layout
 
 `,
 		"cleanup": `Usage:
